@@ -1,37 +1,40 @@
-import pandas as pd
-from src.views import main_page, events_page
-from src.services import cashback_categories, investment_bank
-from src.reports import spending_by_category
-from src.utils import load_transactions
-from pathlib import Path
+"""Main module for running the finance analyzer."""
+import logging
+from datetime import datetime
 
-def run_analysis():
-    # Проверяем, есть ли файл данных
-    data_path = "data/operations.xlsx"
-    if not Path(data_path).exists():
-        print("Файл данных не найден. Создаю тестовый...")
-        from data.generate_data import generate_test_excel
-        generate_test_excel(data_path)
+from .utils import load_transactions
+from .views import main_page
+from .services import simple_search
+from .reports import spending_by_category
 
-    # Загружаем данные
-    df = load_transactions(data_path)
-    transactions = df.to_dict("records")
 
-    # Примеры вызовов функций
-    print("\n=== Главная страница ===")
-    print(main_page("2023-01-01 12:00:00", data_path))
+def main():
+    """Main function to run the finance analyzer."""
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
-    print("\n=== События (месяц) ===")
-    print(events_page("2023-01-15", "M", data_path))
+    try:
+        # Load transactions
+        df = load_transactions('data/operations.xlsx')
 
-    print("\n=== Кешбэк по категориям (январь 2023) ===")
-    print(cashback_categories(transactions, 2023, 1))
+        # Generate main page response
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        main_page_response = main_page(current_time, df)
+        logger.info("Generated main page response")
 
-    print("\n=== Инвесткопилка (лимит 50 руб) ===")
-    print(investment_bank("2023-01", transactions, 50))
+        # Example of simple search
+        transactions = df.to_dict('records')
+        search_results = simple_search("супермаркет", transactions)
+        logger.info(f"Found {search_results['total_found']} matching transactions")
 
-    print("\n=== Траты по категории 'Еда' ===")
-    print(spending_by_category(df, "Еда"))
+        # Generate category spending report
+        report = spending_by_category(df, "Супермаркеты")
+        logger.info(f"Generated spending report for category 'Супермаркеты'")
+
+    except Exception as e:
+        logger.error(f"Error in main: {e}")
+        raise
+
 
 if __name__ == "__main__":
-    run_analysis()
+    main()

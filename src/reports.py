@@ -1,33 +1,81 @@
-import pandas as pd
+"""Reports generation module."""
+import json
 from datetime import datetime, timedelta
-from typing import Dict
+from functools import wraps
+from typing import Any, Callable, Optional
 
+import pandas as pd
+
+
+def save_report(filename: Optional[str] = None):
+    """Decorator to save report results to file."""
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            result = func(*args, **kwargs)
+
+            # Generate filename if not provided
+            actual_filename = filename or f"report_{func.__name__}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+            # Save results to file
+            with open(actual_filename, 'w', encoding='utf-8') as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+@save_report()
 def spending_by_category(
-        df: pd.DataFrame,
+        transactions: pd.DataFrame,
         category: str,
-        date: str = None
-) -> Dict[str, float]:
-    """Считает траты по категории за 3 месяца."""
-    date = date or datetime.now().strftime("%Y-%m-%d")
-    end_date = pd.to_datetime(date)
-    start_date = end_date - timedelta(days=90)
+        date: Optional[str] = None
+) -> dict:
+    """Generate report of spending by category for last 3 months."""
+    try:
+        # Use current date if not provided
+        if date is None:
+            end_date = datetime.now()
+        else:
+            end_date = datetime.strptime(date, "%Y-%m-%d")
 
-    filtered = df[
-        (df["Категория"] == category) &
-        (df["Дата операции"] >= start_date) &
-        (df["Дата операции"] <= end_date)
-        ]
-    return {"total": filtered["Сумма платежа"].sum()}
+        # Calculate start date (3 months ago)
+        start_date = end_date - timedelta(days=90)
 
-def spending_by_weekday(df: pd.DataFrame, date: str = None) -> Dict[str, float]:
-    """Средние траты по дням недели."""
-    date = date or datetime.now().strftime("%Y-%m-%d")
-    end_date = pd.to_datetime(date)
-    start_date = end_date - timedelta(days=90)
+        # Convert date column to datetime if it's not
+        transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
 
-    filtered = df[
-        (df["Дата операции"] >= start_date) &
-        (df["Дата операции"] <= end_date)
-        ]
-    filtered["День недели"] = filtered["Дата операции"].dt.day_name()
-    return filtered.groupby("День недели")["Сумма платежа"].mean().to_dict()
+        # Filter transactions
+        mask = (
+                (transactions['Дата операции'] >= start_date) &
+                (transactions['Дата операции'] <= end_date) &
+                (transactions['Категория'] == category)
+        )
+
+        filtered_df = transactions[mask]
+
+        # Calculate statistics
+        total_spent = abs(filtered_df[filtered_df['Сумма операции'] < 0]['Сумма операции'].sum())
+        transaction_count = len(filtered_df)
+        avg_transaction = total_spent / transaction_count if transaction_count > 0 else 0
+
+        return {
+            "category": category,
+            "period": {
+                "start": start_date.strftime("%Y-%m-%d"),
+                "end": end_date.strftime("%Y-%m-%d")
+            },
+            "statistics": {
+                "total_spent": round(total_spent, 2),
+                "transaction_count": transaction_count,
+                "average_transaction": round(avg_transaction, 2)
+            },
+            "transactions": filtered_df[['Дата операции', 'Сумма операции', 'Описание']]
+            .to_dict('records')
+        }
+    except Exception as e:
+        raise ValueError(f"Error generating category spending report: {e}")

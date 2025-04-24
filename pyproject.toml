@@ -1,44 +1,36 @@
-[project]
-name = "transaction_analyzer"
-version = "1.0.0"
-description = "Анализатор транзакций из Excel-файлов"
-authors = [{ name = "Your Name", email = "your.email@example.com" }]
-readme = "README.md"
-requires-python = ">=3.10"
+[tool.poetry]
+name = "finance-analyzer"
+version = "0.1.0"
+description = "Financial transactions analyzer"
+authors = ["Your Name <your.email@example.com>"]
 
-dependencies = [
-    "pandas>=2.0.0",       # Для работы с Excel/данными
-    "openpyxl>=3.0.0",     # Для чтения .xlsx
-    "python-dateutil>=2.8.0", # Для работы с датами
-    "requests>=2.31.0",    # Для API (если нужно)
-    "loguru>=0.7.0",       # Для логирования (альтернатива logging)
-]
+[tool.poetry.dependencies]
+python = "^3.8"
+pandas = "^1.4.0"
+requests = "^2.27.1"
+python-dotenv = "^0.19.2"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",       # Тестирование
-    "pytest-cov>=4.0.0",   # Покрытие кода
-    "mypy>=1.0.0",         # Статическая типизация
-    "flake8>=6.0.0",       # Линтер
-    "black>=23.0.0",       # Форматирование
-    "isort>=5.12.0",       # Сортировка импортов
-]
+[tool.poetry.dev-dependencies]
+pytest = "^7.0.0"
+black = "^22.1.0"
+isort = "^5.10.1"
+flake8 = "^4.0.1"
+mypy = "^0.931"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 119
-target-version = ["py310"]
+exclude = ".git"
 
 [tool.isort]
-profile = "black"
 line_length = 119
+multi_line_output = 3
+include_trailing_comma = true
 
 [tool.mypy]
-strict = true
 disallow_untyped_defs = true
 warn_return_any = true
-exclude = ["venv/"]
-
-[tool.pytest.ini_options]
-python_files = "test_*.py"
-addopts = "--cov=src --cov-report=term-missing"
-testpaths = ["tests"]
+exclude = "venv"
