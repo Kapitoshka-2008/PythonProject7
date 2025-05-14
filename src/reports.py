@@ -1,92 +1,128 @@
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 import logging
+import functools
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+def handle_report_errors(func: Callable) -> Callable:
+    """Декоратор для обработки ошибок в функциях отчетов."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Ошибка в функции {func.__name__}: {e}")
+            if func.__name__ == "spending_by_category":
+                return {"total": 0.0}
+            if func.__name__ == "spending_by_weekday":
+                return {}
+            return {}
+    return wrapper
 
+@handle_report_errors
 def spending_by_category(
         transactions: pd.DataFrame,
         category: str,
         date: Optional[str] = None
 ) -> Dict[str, float]:
     """Траты по категории за последние 3 месяца."""
-    try:
-        # Конвертируем дату, явно указывая формат
-        if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
-            transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"], format="%Y-%m-%d")
+    # Проверяем входные данные
+    if transactions.empty:
+        logger.warning("Получен пустой DataFrame")
+        return {"total": 0.0}
+        
+    if not category:
+        logger.warning("Не указана категория")
+        return {"total": 0.0}
 
-        date = pd.to_datetime(date) if date else pd.to_datetime(datetime.now())
-        start_date = date - pd.DateOffset(months=3)
+    # Конвертируем дату, явно указывая формат
+    if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
+        transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"], format="%Y-%m-%d")
 
-        filtered = transactions[
-            (transactions["Категория"] == category) &
-            (transactions["Дата операции"] >= start_date) &
-            (transactions["Дата операции"] <= date)
-            ]
+    # Устанавливаем дату для фильтрации
+    date = pd.to_datetime(date) if date else pd.to_datetime(datetime.now())
+    start_date = date - pd.DateOffset(months=3)
 
-        return {"total": filtered["Сумма платежа"].sum()}
+    # Фильтруем транзакции
+    filtered = transactions[
+        (transactions["Категория"] == category) &
+        (transactions["Дата операции"] >= start_date) &
+        (transactions["Дата операции"] <= date)
+    ]
 
-    except Exception as e:
-        logging.error(f"Ошибка генерации отчета по категории: {e}")
-        raise
+    # Проверяем наличие данных после фильтрации
+    if filtered.empty:
+        logger.warning(f"Нет данных по категории {category} за указанный период")
+        return {"total": 0.0}
 
+    # Считаем сумму трат
+    total = filtered[filtered["Сумма операции"] < 0]["Сумма операции"].sum()
+    
+    logger.info(f"Рассчитана сумма трат по категории {category}: {abs(total)}")
+    return {"total": abs(total)}
 
+@handle_report_errors
 def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> Dict[str, float]:
     """Средние траты по дням недели."""
-    try:
-        # Проверяем, что DataFrame не пустой
-        if transactions.empty:
-            logging.warning("Получен пустой DataFrame")
-            return {}
-            
-        # Проверяем наличие необходимых колонок
-        required_columns = ["Дата операции", "Сумма платежа"]
-        if not all(col in transactions.columns for col in required_columns):
-            logging.error(f"Отсутствуют необходимые колонки. Требуются: {required_columns}")
-            return {}
-            
-        # Проверяем, что даты уже в формате datetime
-        if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
-            # Если даты в виде строк, пробуем преобразовать их
-            try:
-                # Сначала пробуем стандартный формат
-                transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"])
-            except Exception as e:
-                logging.error(f"Ошибка преобразования даты: {e}")
-                return {}
-
-        # Фильтруем транзакции только если указана дата
-        filtered = transactions
-        if date:
-            date = pd.to_datetime(date)
-            start_date = date - pd.DateOffset(months=3)
-            filtered = transactions[
-                (transactions["Дата операции"] >= start_date) &
-                (transactions["Дата операции"] <= date)
-            ]
-
-        # Проверка наличия данных после фильтрации
-        if filtered.empty:
-            logging.warning("Нет данных после фильтрации.")
-            return {}
-
-        # Вычисляем день недели
-        filtered["weekday"] = filtered["Дата операции"].dt.day_name()
-
-        # Агрегируем данные по дням недели
-        grouped = filtered.groupby("weekday")["Сумма платежа"].mean()
-
-        # Получаем результат в виде словаря
-        result = grouped.to_dict()
-
-        # Проверка результата
-        if not result:
-            logging.warning("Не удалось сформировать отчет по дням недели.")
-
-        return result
-
-    except Exception as e:
-        logging.error(f"Ошибка генерации отчета по дням недели: {e}")
+    # Проверяем входные данные
+    if transactions.empty:
+        logger.warning("Получен пустой DataFrame")
         return {}
+        
+    # Проверяем наличие необходимых колонок
+    required_columns = ["Дата операции", "Сумма операции"]
+    if not all(col in transactions.columns for col in required_columns):
+        logger.error(f"Отсутствуют необходимые колонки. Требуются: {required_columns}")
+        return {}
+        
+    # Проверяем, что даты уже в формате datetime
+    if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
+        try:
+            transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"])
+        except Exception as e:
+            logger.error(f"Ошибка преобразования даты: {e}")
+            return {}
+
+    # Фильтруем транзакции только если указана дата
+    filtered = transactions
+    if date:
+        date = pd.to_datetime(date)
+        start_date = date - pd.DateOffset(months=3)
+        filtered = transactions[
+            (transactions["Дата операции"] >= start_date) &
+            (transactions["Дата операции"] <= date)
+        ]
+
+    # Проверка наличия данных после фильтрации
+    if filtered.empty:
+        logger.warning("Нет данных после фильтрации")
+        return {}
+
+    # Фильтруем только траты (отрицательные суммы)
+    spending_transactions = filtered[filtered["Сумма операции"] < 0].copy()
+
+    if spending_transactions.empty:
+        logger.warning("Нет данных о тратах после фильтрации")
+        return {}
+
+    # Вычисляем день недели
+    spending_transactions["weekday"] = spending_transactions["Дата операции"].dt.day_name()
+    # Берем абсолютные значения трат для расчета среднего
+    spending_transactions["Сумма операции"] = spending_transactions["Сумма операции"].abs()
+
+    # Агрегируем данные по дням недели
+    grouped = spending_transactions.groupby("weekday")["Сумма операции"].mean()
+
+    # Получаем результат в виде словаря
+    result = grouped.to_dict()
+
+    # Проверка результата
+    if not result:
+        logger.warning("Не удалось сформировать отчет по дням недели")
+        return {}
+
+    logger.info(f"Сформирован отчет по дням недели: {result}")
+    return result
