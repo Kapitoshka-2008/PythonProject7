@@ -2,10 +2,10 @@
 import logging
 from datetime import datetime
 
+from .reports import spending_by_category
+from .services import simple_search
 from .utils import load_transactions
 from .views import main_page
-from .services import simple_search
-from .reports import spending_by_category
 
 
 def main():

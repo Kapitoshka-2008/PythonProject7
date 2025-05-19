@@ -1,8 +1,9 @@
-import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Callable
-import logging
 import functools
+import logging
+from datetime import datetime, timedelta
+from typing import Callable, Dict, Optional
+
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

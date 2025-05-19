@@ -2,11 +2,11 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 import pandas as pd
 
-from .utils import get_greeting, get_currency_rates, get_stock_prices, load_transactions
+from .utils import get_currency_rates, get_greeting, get_stock_prices, load_transactions
 
 
 def filter_transactions_by_date(df: pd.DataFrame, date_str: str, period: str = "M") -> pd.DataFrame:
@@ -41,7 +41,6 @@ def main_page(date_time: str, df: pd.DataFrame = None) -> Dict[str, Any]:
                 df = load_transactions("data/operations.xlsx")
             except Exception as e:
                 logging.error(f"Error loading transactions: {e}")
-                # Возвращаем базовый ответ без данных о транзакциях
                 return {
                     "greeting": get_greeting(current_time),
                     "cards": [],
@@ -68,12 +67,14 @@ def main_page(date_time: str, df: pd.DataFrame = None) -> Dict[str, Any]:
         # Get top 5 transactions
         top_transactions = []
         if all(col in df.columns for col in ['Сумма операции', 'Дата операции', 'Категория', 'Описание']):
+            # Фильтруем строки с корректными датами
+            valid_dates_df = df[df['Дата операции'].notna()]
             top_transactions = (
-                df.sort_values('Сумма операции', ascending=False)
+                valid_dates_df.sort_values('Сумма операции', ascending=False)
                 .head(5)
                 .apply(
                     lambda x: {
-                        "date": x['Дата операции'].strftime("%d.%m.%Y"),
+                        "date": x['Дата операции'].strftime("%d.%m.%Y") if pd.notna(x['Дата операции']) else "Unknown",
                         "amount": round(x['Сумма операции'], 2),
                         "category": x['Категория'],
                         "description": x['Описание']
@@ -116,9 +117,9 @@ def events_page(date_time: str, period: str = "M", file_path: str = "data/operat
         filtered_df = filter_transactions_by_date(df, date_time, period)
 
         # Расходы
-        expenses = filtered_df[filtered_df["Сумма платежа"] < 0]
+        expenses = filtered_df[filtered_df["Сумма операции"] < 0]
         expenses_main = (
-            expenses.groupby("Категория")["Сумма платежа"]
+            expenses.groupby("Категория")["Сумма операции"]
             .sum()
             .sort_values(ascending=False)
             .head(7)
@@ -126,9 +127,9 @@ def events_page(date_time: str, period: str = "M", file_path: str = "data/operat
         )
 
         # Поступления
-        income = filtered_df[filtered_df["Сумма платежа"] > 0]
+        income = filtered_df[filtered_df["Сумма операции"] > 0]
         income_main = (
-            income.groupby("Категория")["Сумма платежа"]
+            income.groupby("Категория")["Сумма операции"]
             .sum()
             .sort_values(ascending=False)
             .to_dict()
@@ -136,11 +137,11 @@ def events_page(date_time: str, period: str = "M", file_path: str = "data/operat
 
         return {
             "expenses": {
-                "total_amount": round(expenses["Сумма платежа"].sum()),
+                "total_amount": round(abs(expenses["Сумма операции"].sum())),
                 "main": [{"category": k, "amount": abs(v)} for k, v in expenses_main.items()],
             },
             "income": {
-                "total_amount": round(income["Сумма платежа"].sum()),
+                "total_amount": round(income["Сумма операции"].sum()),
                 "main": [{"category": k, "amount": v} for k, v in income_main.items()],
             },
         }

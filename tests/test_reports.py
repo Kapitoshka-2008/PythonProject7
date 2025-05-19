@@ -1,7 +1,10 @@
-import pytest
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+import pytest
+
 from src.reports import spending_by_category, spending_by_weekday
+
 
 @pytest.fixture
 def sample_dataframe():

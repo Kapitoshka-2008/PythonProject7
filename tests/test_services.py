@@ -1,5 +1,7 @@
 import pytest
-from src.services import cashback_categories, investment_bank, find_phone_transactions
+
+from src.services import cashback_categories, find_phone_transactions, investment_bank
+
 
 @pytest.fixture
 def sample_transactions():

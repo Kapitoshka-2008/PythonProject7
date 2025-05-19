@@ -1,6 +1,8 @@
-import pandas as pd
-from typing import List, Dict, Any
 import logging
+from typing import Any, Dict, List
+
+import pandas as pd
+
 
 def cashback_categories(
     transactions: List[Dict[str, Any]], 
@@ -22,6 +24,7 @@ def cashback_categories(
 
 import math
 
+
 def investment_bank(
     month: str,
     transactions: List[Dict[str, Any]],
@@ -36,6 +39,7 @@ def investment_bank(
     return round(total, 2)
 
 import re
+
 
 def find_phone_transactions(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Ищет транзакции с номерами телефонов в описании."""

@@ -44,12 +44,12 @@
     &quot;assignee&quot;: &quot;Kapitoshka-2008&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Kapitoshka-2008/Kursach.git&quot;,
-    &quot;accountId&quot;: &quot;1966add6-4074-4af7-b175-8e98dec5aa48&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Kapitoshka-2008/PythonProject7.git",
+    "accountId": "1966add6-4074-4af7-b175-8e98dec5aa48"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7
 }</component>
@@ -181,7 +181,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747221074247</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="Kyrsach 0.1.7">
+      <option name="closed" value="true" />
+      <created>1747306665247</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1747306665247</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -203,6 +211,7 @@
     <MESSAGE value="Kyrsach 0.1.4" />
     <MESSAGE value="Kyrsach 0.1.5" />
     <MESSAGE value="Kyrsach 0.1.6" />
-    <option name="LAST_COMMIT_MESSAGE" value="Kyrsach 0.1.6" />
+    <MESSAGE value="Kyrsach 0.1.7" />
+    <option name="LAST_COMMIT_MESSAGE" value="Kyrsach 0.1.7" />
   </component>
 </project>

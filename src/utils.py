@@ -1,9 +1,9 @@
 """Utility functions for the finance analyzer."""
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, List
-import os
 
 import pandas as pd
 import requests

@@ -1,6 +1,8 @@
 """Tests for utility functions."""
 from datetime import datetime
+
 import pytest
+
 from src.utils import get_greeting
 
 
