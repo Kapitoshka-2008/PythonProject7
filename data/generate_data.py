@@ -1,5 +1,7 @@
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+
 
 def generate_test_excel(file_path: str = "data/operations.xlsx"):
     """Генерирует тестовый Excel-файл с транзакциями."""
@@ -13,6 +15,7 @@ def generate_test_excel(file_path: str = "data/operations.xlsx"):
     df = pd.DataFrame(data)
     df.to_excel(file_path, index=False)
     print(f"Сгенерирован тестовый файл: {file_path}")
+
 
 if __name__ == "__main__":
     generate_test_excel()

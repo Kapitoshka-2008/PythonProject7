@@ -4,11 +4,9 @@ from typing import Any, Dict, List
 import pandas as pd
 
 
-def cashback_categories(
-    transactions: List[Dict[str, Any]], 
-    year: int, 
-    month: int
-) -> Dict[str, float]:
+def simple_search()
+
+def cashback_categories(transactions: List[Dict[str, Any]], year: int, month: int) -> Dict[str, float]:
     """Возвращает сумму кешбэка по категориям за месяц."""
     try:
         result = {}
@@ -22,14 +20,11 @@ def cashback_categories(
         logging.error(f"Ошибка в cashback_categories: {e}")
         return {}
 
+
 import math
 
 
-def investment_bank(
-    month: str,
-    transactions: List[Dict[str, Any]],
-    limit: int = 10
-) -> float:
+def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int = 10) -> float:
     """Считает сумму для инвесткопилки."""
     total = 0.0
     for tx in transactions:
@@ -37,6 +32,7 @@ def investment_bank(
             rounded = math.ceil(tx["Сумма операции"] / limit) * limit
             total += rounded - tx["Сумма операции"]
     return round(total, 2)
+
 
 import re
 

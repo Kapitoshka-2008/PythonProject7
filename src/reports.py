@@ -1,6 +1,6 @@
 import functools
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime,
 from typing import Callable, Dict, Optional
 
 import pandas as pd
@@ -8,8 +8,10 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def handle_report_errors(func: Callable) -> Callable:
     """Декоратор для обработки ошибок в функциях отчетов."""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -21,20 +23,18 @@ def handle_report_errors(func: Callable) -> Callable:
             if func.__name__ == "spending_by_weekday":
                 return {}
             return {}
+
     return wrapper
 
+
 @handle_report_errors
-def spending_by_category(
-        transactions: pd.DataFrame,
-        category: str,
-        date: Optional[str] = None
-) -> Dict[str, float]:
+def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> Dict[str, float]:
     """Траты по категории за последние 3 месяца."""
     # Проверяем входные данные
     if transactions.empty:
         logger.warning("Получен пустой DataFrame")
         return {"total": 0.0}
-        
+
     if not category:
         logger.warning("Не указана категория")
         return {"total": 0.0}
@@ -49,9 +49,9 @@ def spending_by_category(
 
     # Фильтруем транзакции
     filtered = transactions[
-        (transactions["Категория"] == category) &
-        (transactions["Дата операции"] >= start_date) &
-        (transactions["Дата операции"] <= date)
+        (transactions["Категория"] == category)
+        & (transactions["Дата операции"] >= start_date)
+        & (transactions["Дата операции"] <= date)
     ]
 
     # Проверяем наличие данных после фильтрации
@@ -61,9 +61,10 @@ def spending_by_category(
 
     # Считаем сумму трат
     total = filtered[filtered["Сумма операции"] < 0]["Сумма операции"].sum()
-    
+
     logger.info(f"Рассчитана сумма трат по категории {category}: {abs(total)}")
     return {"total": abs(total)}
+
 
 @handle_report_errors
 def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> Dict[str, float]:
@@ -72,13 +73,13 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     if transactions.empty:
         logger.warning("Получен пустой DataFrame")
         return {}
-        
+
     # Проверяем наличие необходимых колонок
     required_columns = ["Дата операции", "Сумма операции"]
     if not all(col in transactions.columns for col in required_columns):
         logger.error(f"Отсутствуют необходимые колонки. Требуются: {required_columns}")
         return {}
-        
+
     # Проверяем, что даты уже в формате datetime
     if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
         try:
@@ -93,8 +94,7 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
         date = pd.to_datetime(date)
         start_date = date - pd.DateOffset(months=3)
         filtered = transactions[
-            (transactions["Дата операции"] >= start_date) &
-            (transactions["Дата операции"] <= date)
+            (transactions["Дата операции"] >= start_date) & (transactions["Дата операции"] <= date)
         ]
 
     # Проверка наличия данных после фильтрации

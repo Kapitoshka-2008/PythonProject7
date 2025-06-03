@@ -1,10 +1,12 @@
-"""Views for generating JSON responses for web pages."""
+"""Views for generating web pages."""
+
 import json
 import logging
 from datetime import datetime
 from typing import Any, Dict
 
 import pandas as pd
+from flask import render_template
 
 from .utils import get_currency_rates, get_greeting, get_stock_prices, load_transactions
 
@@ -13,7 +15,9 @@ def filter_transactions_by_date(df: pd.DataFrame, date_str: str, period: str = "
     """Filter transactions by date period."""
     try:
         date = pd.to_datetime(date_str)
-        if period == "M":
+        if period == "D":
+            start_date = date - pd.DateOffset(days=1)
+        elif period == "M":
             start_date = date - pd.DateOffset(months=1)
         elif period == "Q":
             start_date = date - pd.DateOffset(months=3)
@@ -21,93 +25,68 @@ def filter_transactions_by_date(df: pd.DataFrame, date_str: str, period: str = "
             start_date = date - pd.DateOffset(years=1)
         else:
             raise ValueError(f"Unknown period: {period}")
-        
-        return df[
-            (df["Дата операции"] >= start_date) &
-            (df["Дата операции"] <= date)
-        ]
+        return df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= date)]
     except Exception as e:
         logging.error(f"Error filtering transactions: {e}")
-        raise
+        return pd.DataFrame()
 
 
 def main_page(date_time: str, df: pd.DataFrame = None) -> Dict[str, Any]:
-    """Generate JSON response for main page."""
+    """Generate main page."""
     try:
         current_time = datetime.strptime(date_time, "%Y-%m-%d %H:%M:%S")
-        
+
         if df is None:
             try:
                 df = load_transactions("data/operations.xlsx")
             except Exception as e:
                 logging.error(f"Error loading transactions: {e}")
-                return {
-                    "greeting": get_greeting(current_time),
-                    "cards": [],
-                    "top_transactions": [],
-                    "currency_rates": get_currency_rates(['USD', 'EUR']),
-                    "stock_prices": get_stock_prices(['AAPL', 'GOOGL'])
-                }
+                return render_template(
+                    "pages/main.html",
+                    greeting=get_greeting(current_time),
+                    top_transactions={"expenses": [], "income": []},
+                )
 
-        # Get cards summary
-        cards_summary = []
-        if 'Номер карты' in df.columns:
-            for card in df['Номер карты'].unique():
-                if pd.isna(card):
-                    continue
-                card_df = df[df['Номер карты'] == card]
-                total_spent = abs(card_df[card_df['Сумма операции'] < 0]['Сумма операции'].sum())
-                cashback = total_spent * 0.01  # 1% cashback
-                cards_summary.append({
-                    "last_digits": str(card),
-                    "total_spent": round(total_spent, 2),
-                    "cashback": round(cashback, 2)
-                })
-
-        # Get top 5 transactions
-        top_transactions = []
-        if all(col in df.columns for col in ['Сумма операции', 'Дата операции', 'Категория', 'Описание']):
+        # Get top transactions
+        top_transactions = {"expenses": [], "income": []}
+        if all(col in df.columns for col in ["Сумма операции", "Дата операции", "Категория", "Описание"]):
             # Фильтруем строки с корректными датами
-            valid_dates_df = df[df['Дата операции'].notna()]
-            top_transactions = (
-                valid_dates_df.sort_values('Сумма операции', ascending=False)
-                .head(5)
-                .apply(
+            valid_dates_df = df[df["Дата операции"].notna()]
+            if not valid_dates_df.empty:
+                # Расходы
+                expenses = valid_dates_df[valid_dates_df["Сумма операции"] < 0].sort_values("Сумма операции").head(5)
+                top_transactions["expenses"] = expenses.apply(
                     lambda x: {
-                        "date": x['Дата операции'].strftime("%d.%m.%Y") if pd.notna(x['Дата операции']) else "Unknown",
-                        "amount": round(x['Сумма операции'], 2),
-                        "category": x['Категория'],
-                        "description": x['Описание']
+                        "date": x["Дата операции"].strftime("%Y-%m-%d"),
+                        "amount": round(float(x["Сумма операции"]), 2),
+                        "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
                     },
-                    axis=1
+                    axis=1,
                 ).tolist()
-            )
 
-        # Load user settings
-        try:
-            with open('user_settings.json', 'r') as f:
-                settings = json.load(f)
-        except FileNotFoundError:
-            settings = {
-                'user_currencies': ['USD', 'EUR'],
-                'user_stocks': ['AAPL', 'GOOGL']
-            }
+                # Доходы
+                income = valid_dates_df[valid_dates_df["Сумма операции"] > 0].sort_values("Сумма операции", ascending=False).head(5)
+                top_transactions["income"] = income.apply(
+                    lambda x: {
+                        "date": x["Дата операции"].strftime("%Y-%m-%d"),
+                        "amount": round(float(x["Сумма операции"]), 2),
+                        "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+                    },
+                    axis=1,
+                ).tolist()
 
-        response = {
-            "greeting": get_greeting(current_time),
-            "cards": cards_summary,
-            "top_transactions": top_transactions,
-            "currency_rates": get_currency_rates(settings['user_currencies']),
-            "stock_prices": get_stock_prices(settings['user_stocks'])
-        }
-
-        return response
+        return render_template(
+            "pages/main.html",
+            greeting=get_greeting(current_time),
+            top_transactions=top_transactions,
+        )
     except Exception as e:
-        logging.error(f"Error generating main page response: {e}")
-        return {
-            "greeting": get_greeting(current_time),
-            "error": str(e)
-        }
+        logging.error(f"Error generating main page: {e}")
+        return render_template(
+            "pages/main.html",
+            greeting=get_greeting(current_time),
+            error=str(e),
+        )
 
 
 def events_page(date_time: str, period: str = "M", file_path: str = "data/operations.xlsx") -> Dict:
@@ -118,37 +97,38 @@ def events_page(date_time: str, period: str = "M", file_path: str = "data/operat
 
         # Расходы
         expenses = filtered_df[filtered_df["Сумма операции"] < 0]
-        expenses_main = (
-            expenses.groupby("Категория")["Сумма операции"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(7)
-            .to_dict()
-        )
+        expenses_list = expenses.apply(
+            lambda x: {
+                "date": x["Дата операции"].strftime("%Y-%m-%d"),
+                "amount": round(float(x["Сумма операции"]), 2),
+                "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+            },
+            axis=1,
+        ).tolist()
 
         # Поступления
         income = filtered_df[filtered_df["Сумма операции"] > 0]
-        income_main = (
-            income.groupby("Категория")["Сумма операции"]
-            .sum()
-            .sort_values(ascending=False)
-            .to_dict()
-        )
+        income_list = income.apply(
+            lambda x: {
+                "date": x["Дата операции"].strftime("%Y-%m-%d"),
+                "amount": round(float(x["Сумма операции"]), 2),
+                "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+            },
+            axis=1,
+        ).tolist()
 
-        return {
-            "expenses": {
-                "total_amount": round(abs(expenses["Сумма операции"].sum())),
-                "main": [{"category": k, "amount": abs(v)} for k, v in expenses_main.items()],
-            },
-            "income": {
-                "total_amount": round(income["Сумма операции"].sum()),
-                "main": [{"category": k, "amount": v} for k, v in income_main.items()],
-            },
-        }
+        return render_template(
+            "pages/events.html",
+            period=period,
+            expenses=expenses_list,
+            income=income_list,
+        )
     except Exception as e:
         logging.error(f"Ошибка в events_page: {e}")
-        return {
-            "expenses": {"total_amount": 0, "main": []},
-            "income": {"total_amount": 0, "main": []},
-            "error": str(e)
-        }
+        return render_template(
+            "pages/events.html",
+            period=period,
+            expenses=[],
+            income=[],
+            error=str(e),
+        )

@@ -1,11 +1,10 @@
 """Main module for running the finance analyzer."""
-import logging
-from datetime import datetime
 
-from .reports import spending_by_category
-from .services import simple_search
-from .utils import load_transactions
-from .views import main_page
+import logging
+
+from src.reports import spending_by_category
+from src.services import simple_search
+from src.utils import load_transactions
 
 
 def main():
@@ -15,21 +14,20 @@ def main():
 
     try:
         # Load transactions
-        df = load_transactions('data/operations.xlsx')
+        df = load_transactions("data/operations.xlsx")
 
         # Generate main page response
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        main_page_response = main_page(current_time, df)
         logger.info("Generated main page response")
 
         # Example of simple search
-        transactions = df.to_dict('records')
+        transactions = df.to_dict("records")
         search_results = simple_search("супермаркет", transactions)
         logger.info(f"Found {search_results['total_found']} matching transactions")
 
         # Generate category spending report
         report = spending_by_category(df, "Супермаркеты")
         logger.info(f"Generated spending report for category 'Супермаркеты'")
+
 
     except Exception as e:
         logger.error(f"Error in main: {e}")
