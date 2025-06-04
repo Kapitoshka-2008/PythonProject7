@@ -1,6 +1,5 @@
 """Views for generating web pages."""
 
-import json
 import logging
 from datetime import datetime
 from typing import Any, Dict
@@ -8,11 +7,28 @@ from typing import Any, Dict
 import pandas as pd
 from flask import render_template
 
-from .utils import get_currency_rates, get_greeting, get_stock_prices, load_transactions
+from .utils import (
+    get_greeting,
+    load_transactions,
+)
 
 
-def filter_transactions_by_date(df: pd.DataFrame, date_str: str, period: str = "M") -> pd.DataFrame:
+def convert_transaction_to_dict(row: pd.Series) -> Dict[str, Any]:
+    """Convert transaction row to dictionary format."""
+    return {
+        "date": row["Дата операции"].strftime("%Y-%m-%d"),
+        "amount": round(float(row["Сумма операции"]), 2),
+        "description": str(row["Описание"]) if pd.notna(row["Описание"]) else "Unknown",
+    }
+
+
+def filter_transactions_by_date(
+    df: pd.DataFrame, date_str: str, period: str = "M"
+) -> pd.DataFrame:
     """Filter transactions by date period."""
+    if df.empty:
+        return df
+
     try:
         date = pd.to_datetime(date_str)
         if period == "D":
@@ -25,7 +41,9 @@ def filter_transactions_by_date(df: pd.DataFrame, date_str: str, period: str = "
             start_date = date - pd.DateOffset(years=1)
         else:
             raise ValueError(f"Unknown period: {period}")
-        return df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= date)]
+        return df[
+            (df["Дата операции"] >= start_date) & (df["Дата операции"] <= date)
+        ]
     except Exception as e:
         logging.error(f"Error filtering transactions: {e}")
         return pd.DataFrame()
@@ -33,6 +51,7 @@ def filter_transactions_by_date(df: pd.DataFrame, date_str: str, period: str = "
 
 def main_page(date_time: str, df: pd.DataFrame = None) -> Dict[str, Any]:
     """Generate main page."""
+    current_time = None
     try:
         current_time = datetime.strptime(date_time, "%Y-%m-%d %H:%M:%S")
 
@@ -49,28 +68,43 @@ def main_page(date_time: str, df: pd.DataFrame = None) -> Dict[str, Any]:
 
         # Get top transactions
         top_transactions = {"expenses": [], "income": []}
-        if all(col in df.columns for col in ["Сумма операции", "Дата операции", "Категория", "Описание"]):
+        if all(
+            col in df.columns
+            for col in ["Сумма операции", "Дата операции", "Категория", "Описание"]
+        ):
             # Фильтруем строки с корректными датами
             valid_dates_df = df[df["Дата операции"].notna()]
             if not valid_dates_df.empty:
                 # Расходы
-                expenses = valid_dates_df[valid_dates_df["Сумма операции"] < 0].sort_values("Сумма операции").head(5)
+                expenses = (
+                    valid_dates_df[valid_dates_df["Сумма операции"] < 0]
+                    .sort_values("Сумма операции")
+                    .head(5)
+                )
                 top_transactions["expenses"] = expenses.apply(
                     lambda x: {
                         "date": x["Дата операции"].strftime("%Y-%m-%d"),
                         "amount": round(float(x["Сумма операции"]), 2),
-                        "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+                        "description": str(x["Описание"])
+                        if pd.notna(x["Описание"])
+                        else "Unknown",
                     },
                     axis=1,
                 ).tolist()
 
                 # Доходы
-                income = valid_dates_df[valid_dates_df["Сумма операции"] > 0].sort_values("Сумма операции", ascending=False).head(5)
+                income = (
+                    valid_dates_df[valid_dates_df["Сумма операции"] > 0]
+                    .sort_values("Сумма операции", ascending=False)
+                    .head(5)
+                )
                 top_transactions["income"] = income.apply(
                     lambda x: {
                         "date": x["Дата операции"].strftime("%Y-%m-%d"),
                         "amount": round(float(x["Сумма операции"]), 2),
-                        "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+                        "description": str(x["Описание"])
+                        if pd.notna(x["Описание"])
+                        else "Unknown",
                     },
                     axis=1,
                 ).tolist()
@@ -84,12 +118,14 @@ def main_page(date_time: str, df: pd.DataFrame = None) -> Dict[str, Any]:
         logging.error(f"Error generating main page: {e}")
         return render_template(
             "pages/main.html",
-            greeting=get_greeting(current_time),
+            greeting=get_greeting(current_time or datetime.now()),
             error=str(e),
         )
 
 
-def events_page(date_time: str, period: str = "M", file_path: str = "data/operations.xlsx") -> Dict:
+def events_page(
+    date_time: str, period: str = "M", file_path: str = "data/operations.xlsx"
+) -> Dict:
     """Анализ трат и поступлений за период."""
     try:
         df = load_transactions(file_path)
@@ -101,7 +137,9 @@ def events_page(date_time: str, period: str = "M", file_path: str = "data/operat
             lambda x: {
                 "date": x["Дата операции"].strftime("%Y-%m-%d"),
                 "amount": round(float(x["Сумма операции"]), 2),
-                "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+                "description": str(x["Описание"])
+                if pd.notna(x["Описание"])
+                else "Unknown",
             },
             axis=1,
         ).tolist()
@@ -112,7 +150,9 @@ def events_page(date_time: str, period: str = "M", file_path: str = "data/operat
             lambda x: {
                 "date": x["Дата операции"].strftime("%Y-%m-%d"),
                 "amount": round(float(x["Сумма операции"]), 2),
-                "description": str(x["Описание"]) if pd.notna(x["Описание"]) else "Unknown",
+                "description": str(x["Описание"])
+                if pd.notna(x["Описание"])
+                else "Unknown",
             },
             axis=1,
         ).tolist()

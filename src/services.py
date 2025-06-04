@@ -1,12 +1,18 @@
 import logging
+import math
+import re
 from typing import Any, Dict, List
 
 import pandas as pd
 
 
-def simple_search()
+def simple_search():
+    pass
 
-def cashback_categories(transactions: List[Dict[str, Any]], year: int, month: int) -> Dict[str, float]:
+
+def cashback_categories(
+    transactions: List[Dict[str, Any]], year: int, month: int
+) -> Dict[str, float]:
     """Возвращает сумму кешбэка по категориям за месяц."""
     try:
         result = {}
@@ -21,10 +27,9 @@ def cashback_categories(transactions: List[Dict[str, Any]], year: int, month: in
         return {}
 
 
-import math
-
-
-def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int = 10) -> float:
+def investment_bank(
+    month: str, transactions: List[Dict[str, Any]], limit: int = 10
+) -> float:
     """Считает сумму для инвесткопилки."""
     total = 0.0
     for tx in transactions:
@@ -34,10 +39,9 @@ def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int =
     return round(total, 2)
 
 
-import re
-
-
-def find_phone_transactions(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def find_phone_transactions(
+    transactions: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """Ищет транзакции с номерами телефонов в описании."""
     phone_pattern = re.compile(r"\+7\s?\d{3}\s?\d{3}[- ]?\d{2}[- ]?\d{2}")
     result = []

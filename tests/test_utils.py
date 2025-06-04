@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-
 from src.utils import get_greeting
 
 

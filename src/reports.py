@@ -1,129 +1,100 @@
-import functools
+"""Report generation functions for the finance analyzer."""
+
 import logging
-from datetime import datetime,
-from typing import Callable, Dict, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 import pandas as pd
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
-def handle_report_errors(func: Callable) -> Callable:
-    """Декоратор для обработки ошибок в функциях отчетов."""
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Ошибка в функции {func.__name__}: {e}")
-            if func.__name__ == "spending_by_category":
-                return {"total": 0.0}
-            if func.__name__ == "spending_by_weekday":
-                return {}
-            return {}
-
+def handle_empty_dataframe(func):
+    """Decorator to handle empty DataFrame cases."""
+    def wrapper(df: pd.DataFrame, *args, **kwargs):
+        if df.empty:
+            logger.warning(f"Empty DataFrame passed to {func.__name__}")
+            return None
+        return func(df, *args, **kwargs)
     return wrapper
 
 
-@handle_report_errors
-def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> Dict[str, float]:
-    """Траты по категории за последние 3 месяца."""
-    # Проверяем входные данные
-    if transactions.empty:
-        logger.warning("Получен пустой DataFrame")
-        return {"total": 0.0}
+@handle_empty_dataframe
+def spending_by_category(
+    df: pd.DataFrame,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None
+) -> Dict[str, float]:
+    """Calculate total spending by category for a given date range."""
+    try:
+        # Filter by date range if provided
+        if start_date and end_date:
+            mask = (
+                (df["Дата операции"] >= start_date) &
+                (df["Дата операции"] <= end_date)
+            )
+            df = df[mask]
 
-    if not category:
-        logger.warning("Не указана категория")
-        return {"total": 0.0}
-
-    # Конвертируем дату, явно указывая формат
-    if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
-        transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"], format="%Y-%m-%d")
-
-    # Устанавливаем дату для фильтрации
-    date = pd.to_datetime(date) if date else pd.to_datetime(datetime.now())
-    start_date = date - pd.DateOffset(months=3)
-
-    # Фильтруем транзакции
-    filtered = transactions[
-        (transactions["Категория"] == category)
-        & (transactions["Дата операции"] >= start_date)
-        & (transactions["Дата операции"] <= date)
-    ]
-
-    # Проверяем наличие данных после фильтрации
-    if filtered.empty:
-        logger.warning(f"Нет данных по категории {category} за указанный период")
-        return {"total": 0.0}
-
-    # Считаем сумму трат
-    total = filtered[filtered["Сумма операции"] < 0]["Сумма операции"].sum()
-
-    logger.info(f"Рассчитана сумма трат по категории {category}: {abs(total)}")
-    return {"total": abs(total)}
-
-
-@handle_report_errors
-def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> Dict[str, float]:
-    """Средние траты по дням недели."""
-    # Проверяем входные данные
-    if transactions.empty:
-        logger.warning("Получен пустой DataFrame")
+        # Group by category and sum amounts
+        spending = df.groupby("Категория")["Сумма операции"].sum().to_dict()
+        return spending
+    except Exception as e:
+        logger.error(f"Error in spending_by_category: {e}")
         return {}
 
-    # Проверяем наличие необходимых колонок
-    required_columns = ["Дата операции", "Сумма операции"]
-    if not all(col in transactions.columns for col in required_columns):
-        logger.error(f"Отсутствуют необходимые колонки. Требуются: {required_columns}")
+
+@handle_empty_dataframe
+def spending_by_weekday(
+    df: pd.DataFrame,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None
+) -> Dict[str, float]:
+    """Calculate average spending by weekday for a given date range."""
+    try:
+        # Filter by date range if provided
+        if start_date and end_date:
+            mask = (
+                (df["Дата операции"] >= start_date) &
+                (df["Дата операции"] <= end_date)
+            )
+            df = df[mask]
+
+        # Add weekday column
+        df["weekday"] = df["Дата операции"].dt.day_name()
+
+        # Group by weekday and calculate mean
+        spending = df.groupby("weekday")["Сумма операции"].mean().to_dict()
+        return spending
+    except Exception as e:
+        logger.error(f"Error in spending_by_weekday: {e}")
         return {}
 
-    # Проверяем, что даты уже в формате datetime
-    if not pd.api.types.is_datetime64_any_dtype(transactions["Дата операции"]):
-        try:
-            transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"])
-        except Exception as e:
-            logger.error(f"Ошибка преобразования даты: {e}")
-            return {}
 
-    # Фильтруем транзакции только если указана дата
-    filtered = transactions
-    if date:
-        date = pd.to_datetime(date)
-        start_date = date - pd.DateOffset(months=3)
-        filtered = transactions[
-            (transactions["Дата операции"] >= start_date) & (transactions["Дата операции"] <= date)
-        ]
+@handle_empty_dataframe
+def top_transactions(
+    df: pd.DataFrame,
+    n: int = 5,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None
+) -> List[Dict]:
+    """Get top N transactions by amount for a given date range."""
+    try:
+        # Filter by date range if provided
+        if start_date and end_date:
+            mask = (
+                (df["Дата операции"] >= start_date) &
+                (df["Дата операции"] <= end_date)
+            )
+            df = df[mask]
 
-    # Проверка наличия данных после фильтрации
-    if filtered.empty:
-        logger.warning("Нет данных после фильтрации")
-        return {}
-
-    # Фильтруем только траты (отрицательные суммы)
-    spending_transactions = filtered[filtered["Сумма операции"] < 0].copy()
-
-    if spending_transactions.empty:
-        logger.warning("Нет данных о тратах после фильтрации")
-        return {}
-
-    # Вычисляем день недели
-    spending_transactions["weekday"] = spending_transactions["Дата операции"].dt.day_name()
-    # Берем абсолютные значения трат для расчета среднего
-    spending_transactions["Сумма операции"] = spending_transactions["Сумма операции"].abs()
-
-    # Агрегируем данные по дням недели
-    grouped = spending_transactions.groupby("weekday")["Сумма операции"].mean()
-
-    # Получаем результат в виде словаря
-    result = grouped.to_dict()
-
-    # Проверка результата
-    if not result:
-        logger.warning("Не удалось сформировать отчет по дням недели")
-        return {}
-
-    logger.info(f"Сформирован отчет по дням недели: {result}")
-    return result
+        # Sort by amount and get top N
+        top_n = df.nlargest(n, "Сумма операции")
+        return top_n.to_dict("records")
+    except Exception as e:
+        logger.error(f"Error in top_transactions: {e}")
+        return []
