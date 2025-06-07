@@ -54,7 +54,7 @@ def load_transactions(file_path: str) -> pd.DataFrame:
         # Преобразуем даты
         if "Дата операции" in df.columns:
             df["Дата операции"] = pd.to_datetime(
-                df["Дата операции"], format="%Y-%m-%d", errors="coerce"
+                df["Дата операции"], format="%d.%m.%Y %H:%M:%S", errors='raise'
             )
 
         logger.info(f"Successfully loaded transactions from {file_path}")

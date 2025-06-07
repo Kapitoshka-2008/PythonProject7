@@ -1,16 +1,26 @@
-"""Main application entry point."""
+"""Flask application for the finance analyzer."""
 
-import os
-from dotenv import load_dotenv
+from datetime import datetime
 
-from src import app
+from flask import Flask
 
-# Load environment variables
-load_dotenv()
+from src.views import events_page, main_page
+
+app = Flask(__name__, template_folder="templates", static_folder="static")
+
+
+@app.route("/")
+def main():
+    """Main page route."""
+    return main_page(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+
+@app.route("/events")
+@app.route("/events/<period>")
+def events(period="M"):
+    """Events page route."""
+    return events_page(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), period)
+
 
 if __name__ == "__main__":
-    app.run(
-        host=os.getenv("FLASK_HOST", "127.0.0.1"),
-        port=int(os.getenv("FLASK_PORT", 5000)),
-        debug=os.getenv("FLASK_DEBUG", "True").lower() == "true"
-    ) 
+    app.run(debug=True)

@@ -7,9 +7,9 @@
     <div class="col-12">
         <h1 class="display-4">Транзакции</h1>
         <div class="btn-group" role="group" aria-label="Периоды">
-            <a href="{{ url_for('events_page', period='D') }}" class="btn btn-outline-primary {% if period == 'D' %}active{% endif %}">День</a>
-            <a href="{{ url_for('events_page', period='M') }}" class="btn btn-outline-primary {% if period == 'M' %}active{% endif %}">Месяц</a>
-            <a href="{{ url_for('events_page', period='Y') }}" class="btn btn-outline-primary {% if period == 'Y' %}active{% endif %}">Год</a>
+            <a href="{{ url_for('events', period='D') }}" class="btn btn-outline-primary {% if period == 'D' %}active{% endif %}">День</a>
+            <a href="{{ url_for('events', period='M') }}" class="btn btn-outline-primary {% if period == 'M' %}active{% endif %}">Месяц</a>
+            <a href="{{ url_for('events', period='Y') }}" class="btn btn-outline-primary {% if period == 'Y' %}active{% endif %}">Год</a>
         </div>
     </div>
 </div>

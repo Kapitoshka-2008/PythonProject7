@@ -7,10 +7,7 @@ from typing import Any, Dict
 import pandas as pd
 from flask import render_template
 
-from .utils import (
-    get_greeting,
-    load_transactions,
-)
+from .utils import get_greeting, load_transactions
 
 
 def convert_transaction_to_dict(row: pd.Series) -> Dict[str, Any]:
@@ -142,7 +139,7 @@ def events_page(
                 else "Unknown",
             },
             axis=1,
-        ).tolist()
+        ).values.tolist()
 
         # Поступления
         income = filtered_df[filtered_df["Сумма операции"] > 0]
@@ -155,7 +152,7 @@ def events_page(
                 else "Unknown",
             },
             axis=1,
-        ).tolist()
+        ).values.tolist()
 
         return render_template(
             "pages/events.html",
